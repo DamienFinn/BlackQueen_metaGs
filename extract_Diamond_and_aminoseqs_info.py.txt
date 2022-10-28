@@ -1,0 +1,273 @@
+#Black Queen Diamond python script
+#Written by Damien Finn, 05.09.22
+
+#The purpose of this code is to extract the following relevant information from Diamond annotated MG contigs:
+
+#1) proteins that match a specific protein of interest, nominated by the User
+#2) take only the top best match over 80% identity match
+#3) extract the taxon name associated with the protein(s) of interest
+#4) extract the ORF ID
+#5) record the sample name
+#6) extract the corresponding amino acid sequence from the ORF ID
+#7) collate all taxa detected for comparisons against those who encode the proteins of interest
+
+#As always when dealing with NCBI derived info, must replace all ',' before running or there will be headaches!
+
+#Run as: $python extract_Diamond_and_aminoseqs_info.py -i <Diamond file> -a <amino acid sequences .fa file> -o ./
+
+import os.path
+import sys
+import csv
+
+
+diamond_file = sys.argv[sys.argv.index('-i')+1]
+aminos_file = sys.argv[sys.argv.index('-a')+1]
+output_file = sys.argv[sys.argv.index('-o')+1]
+
+def import_file(filename):
+    for line in csv.reader(open(filename)):
+        if line:
+            yield line
+
+good_list = []
+good_list.append("Sample" + '\t' + "ORF" + '\t' + "AminoAcid" + '\t' + "ProteinMarker" + '\t' + "Taxon" + '\t' + "Identity") 
+fmark = '['
+rmark = ']'
+
+lys_list = ['diaminopimelate decarboxylase', 'lysA', 'LysA']
+phe_list = ['chorismate mutase', 'prephenate dehydratase', 'phea', 'tyrosine aminotransferase', 'tyrb', 'aspartate aminotransferase', 'aromatic amino acid aminotransferase']
+trp_list = ['anthranilate synthase', 'trp3', 'anthranilate phosphoribosyltransferase', 'trpd', 'trp1', 'tryptophan synthase subunit alpha', 'trpa', 'tryptophan synthase subunit beta', 'trpb']
+
+all_taxa_list = []
+all_taxa_list.append("Sample" + '\t' + "ORF" + '\t' + "Taxon")
+
+print('Collating individuals present') 
+
+for line in import_file(diamond_file):
+	for il in line:
+		lastTL = all_taxa_list[-1]
+		splitline = il.split("\t")
+		currORF = splitline[0]
+		Taxoninfoin = splitline[12]
+		currTaxon = Taxoninfoin[Taxoninfoin.find(fmark)+1:Taxoninfoin.find(rmark)]
+		splitTaxon = currTaxon.split(" ")
+		if 'Candidatus' in splitTaxon[0]:
+			genus = splitTaxon[1]
+		elif 'uncultured' in splitTaxon[0]:
+			genus = splitTaxon[1]
+		else:
+			genus = splitTaxon[0]
+		if currORF in lastTL:
+			pass
+		else:
+			all_taxa_list.append(diamond_file + '\t' + currORF + '\t' + genus)
+		
+
+print('Finding Lysine ORFs')
+
+for line in import_file(diamond_file):
+	for y in lys_list:
+		for il in line:
+			lastGL = good_list[-1]
+			splitline = il.split("\t")
+			currIdentity = float(splitline[2])
+			Taxoninfoin = splitline[12]
+			currORF = splitline[0]
+			currTaxon = Taxoninfoin[Taxoninfoin.find(fmark)+1:Taxoninfoin.find(rmark)]
+			splitTaxon = currTaxon.split(" ")
+			if 'Candidatus' in splitTaxon[0]:
+				genus = splitTaxon[1]
+			elif 'uncultured' in splitTaxon[0]:
+				genus = splitTaxon[1]
+			else:
+				genus = splitTaxon[0]
+			if currORF in lastGL:
+				pass
+			elif y in splitline[12].lower() and currIdentity > 79.9:
+				good_list.append(diamond_file + '\t' + currORF + '\t' + 'Lysine' + '\t' +  y + '\t' + genus + '\t' + str(currIdentity))
+			elif 'lysA' in splitline[12] and currIdentity > 79.9:
+				good_list.append(diamond_file + '\t' + currORF + '\t' + 'Lysine' + '\t' +  'lysA' + '\t' + genus + '\t' + str(currIdentity))
+			elif 'LysA' in splitline[12].lower() and currIdentity > 79.9:
+				good_list.append(diamond_file + '\t' + currORF + '\t' + 'Lysine' + '\t' +  'LysA' + '\t' + genus + '\t' + str(currIdentity))
+			else:
+				pass
+
+print('Finding Phenylalanine ORFs')
+
+for line in import_file(diamond_file):
+	for y in phe_list:
+		for il in line:
+			lastGL = good_list[-1]
+			splitline = il.split("\t")
+			currIdentity = float(splitline[2])
+			Taxoninfoin = splitline[12]
+			currORF = splitline[0]
+			currTaxon = Taxoninfoin[Taxoninfoin.find(fmark)+1:Taxoninfoin.find(rmark)]
+			splitTaxon = currTaxon.split(" ")
+			if 'Candidatus' in splitTaxon[0]:
+				genus = splitTaxon[1]
+			elif 'uncultured' in splitTaxon[0]:
+				genus = splitTaxon[1]
+			else:
+				genus = splitTaxon[0]
+			if currORF in lastGL:
+				pass
+			elif y in splitline[12] and currIdentity > 79.9:
+				good_list.append(diamond_file + '\t' + currORF + '\t' + 'Phenylalanine' + '\t' +  y + '\t' + genus + '\t' + str(currIdentity)) 
+			else:
+				pass
+
+print('Finding Tryptophan ORFs')
+
+for line in import_file(diamond_file):
+	for y in trp_list:
+		for il in line:
+			lastGL = good_list[-1]
+			splitline = il.split("\t")
+			currIdentity = float(splitline[2])
+			Taxoninfoin = splitline[12]
+			currORF = splitline[0]
+			currTaxon = Taxoninfoin[Taxoninfoin.find(fmark)+1:Taxoninfoin.find(rmark)]
+			splitTaxon = currTaxon.split(" ")
+			if 'Candidatus' in splitTaxon[0]:
+				genus = splitTaxon[1]
+			elif 'uncultured' in splitTaxon[0]:
+				genus = splitTaxon[1]
+			else:
+				genus = splitTaxon[0]
+			if currORF in lastGL:
+				pass
+			elif y in splitline[12] and currIdentity > 79.9:
+					good_list.append(diamond_file + '\t' + currORF + '\t' + 'Tryptophan' + '\t' +  y + '\t' + genus + '\t' + str(currIdentity)) 
+			else:
+				pass
+
+print('Checking Genera for fidelity')
+
+Besser_list = []
+
+for i in good_list:
+	spliti = i.split('\t')
+	Gene = spliti[3]
+	Group = spliti[2]
+	Genus = spliti[4]
+	tmplist = []
+	if Group == 'Lysine':
+		for x in good_list:
+			splitx = x.split('\t')
+			queryGenus = splitx[4]
+			queryGene = splitx[3]
+			queryGroup = splitx[2]
+			if queryGenus == Genus and queryGroup == Group:
+				if queryGene == 'diaminopimelate decarboxylase' or queryGene == 'lysA' or queryGene == 'LysA':
+					tmplist.append(queryGene)
+		if 'lysA' in tmplist or 'LysA' in tmplist or 'diaminopimelate decarboxylase' in tmplist:
+			Besser_list.append(spliti[0] + '\t' + spliti[1] + '\t' + spliti[2] + '\t' + spliti[3] + '\t' +  spliti[4])
+ 
+	if Group == 'Phenylalanine':
+		for x in good_list:
+			splitx = x.split('\t')
+			queryGenus = splitx[4]
+			queryGene = splitx[3]
+			queryGroup = splitx[2]
+			if queryGenus == Genus and queryGroup == Group:
+				if queryGene == 'chorismate mutase':
+					tmplist.append(queryGene)
+				if queryGene == 'prephenate dehydratase' or queryGene == 'phea':
+					tmplist.append(queryGene)
+				if queryGene == 'tyrosine aminotransferase' or queryGene == 'tyrb' or queryGene == 'aspartate aminotransferase' or queryGene == 'aromatic amino acid aminotransferase':
+					tmplist.append(queryGene)
+		if 'chorismate mutase' in tmplist:
+			if 'prephenate dehydratase' in tmplist or 'phea' in tmplist:
+				if 'tyrosine aminotransferase' in tmplist or 'tyrb' in tmplist or 'aspartate aminotransferase' in tmplist or 'aromatic amino acid aminotransferase' in tmplist:
+					Besser_list.append(spliti[0] + '\t' + spliti[1] + '\t' + spliti[2] + '\t' + spliti[3] + '\t' +  spliti[4])
+	if Group == 'Tryptophan':
+		for x in good_list:
+			splitx = x.split('\t')
+			queryGenus = splitx[4]
+			queryGene = splitx[3]
+			queryGroup = splitx[2]
+			if queryGenus == Genus and queryGroup == Group:
+				if queryGene == 'anthranilate synthase' or queryGene == 'trp3' or queryGene == 'trp1':
+					tmplist.append(queryGene)
+				if queryGene == 'anthranilate phosphoribosyltransferase' or queryGene == 'trpd':
+					tmplist.append(queryGene)
+				if queryGene == 'tryptophan synthase subunit alpha' or queryGene == 'trpa' or queryGene == 'tryptophan synthase subunit beta' or queryGene == 'trpb':
+					tmplist.append(queryGene)
+		if 'anthranilate synthase' in tmplist or 'trp3' in tmplist or 'trp1' in tmplist:
+			if 'anthranilate phosphoribosyltransferase' in tmplist or 'trpd' in tmplist:
+				if 'tryptophan synthase subunit alpha' in tmplist or 'trpa' in tmplist or 'tryptophan synthase subunit beta' in tmplist or 'trpb' in tmplist:
+					Besser_list.append(spliti[0] + '\t' + spliti[1] + '\t' + spliti[2] + '\t' + spliti[3] + '\t' +  spliti[4])
+
+
+
+
+Seqlist = []
+
+print('Importing Amino Acid seqs')
+				
+for line in import_file(aminos_file):
+	for il in line:
+		if '>' in il[0]:
+			x = il.split("#")
+			Seqlist.append(x[0])
+		elif '*' in il[-1]:
+			Seqlist.append(il[0:-1])
+		else:
+			Seqlist.append(il)
+
+tmp = ''.join(Seqlist)
+tmp2 = tmp.split('>')
+
+LysAAs = []
+PhenAAs = []
+TrypAAs = []
+
+print('Finding specific sequences of interest')
+
+for x in Besser_list:
+	tmp4 = x.split('\t')
+	queryORF = tmp4[1]
+	queryAA = tmp4[3]
+	for i in tmp2:
+		tmp3 = i.split(' ')
+		if len(tmp3) > 1:
+			ORF = tmp3[0]
+			AAs = tmp3[1]
+			if ORF == queryORF and len(AAs) > 100: 
+				if queryAA == 'diaminopimelate decarboxylase' or queryAA == 'lysA' or queryAA == 'LysA':
+					LysAAs.append('>' + ORF + '\n' + AAs)
+				elif queryAA == 'prephenate dehydratase' or queryAA == 'phea':
+					PhenAAs.append('>' + ORF + '\n' + AAs)
+				elif queryAA == 'tryptophan synthase subunit alpha' or queryAA == 'trpa':
+					TrypAAs.append('>' + ORF + '\n' + AAs)
+				else:
+					pass
+			else:
+				pass
+
+output = open(os.path.join(output_file, "All_taxa" + str(diamond_file) + ".txt"), "w")	
+for x in all_taxa_list:
+	output.write(x + '\n')
+				
+output = open(os.path.join(output_file, "All_BQ_prots" + str(diamond_file) + ".txt"), "w")	
+for x in good_list:
+	output.write(x + '\n')
+
+output = open(os.path.join(output_file, "Complete_BQ_prots" + str(diamond_file) + ".txt"), "w")	
+for x in Besser_list:
+	output.write(x + '\n')
+
+output = open(os.path.join(output_file, "Lysine_seqs" + str(diamond_file) + ".txt"), "w")
+for x in LysAAs:
+	output.write(x + '\n')
+
+output = open(os.path.join(output_file, "Phen_seqs" + str(diamond_file) + ".txt"), "w")
+for x in PhenAAs:
+	output.write(x + '\n')
+
+output = open(os.path.join(output_file, "Tryp_seqs" + str(diamond_file) + ".txt"), "w")
+for x in TrypAAs:
+	output.write(x + '\n')
+
+

@@ -1,0 +1,61 @@
+#A simple script to associate contig cluster counts with specific protein markers of interest
+#Inputs include the contig cluster file, an output of  cd-hit clustering
+#And output from extract_Diamond_info.py file, which has our particular proteins and taxa of interest 
+#Written by Damien Finn, 05.09.22
+
+#Run as: $python BQ_Diamond_clusters_script.py -c <cluster file> -a <extract_Diamond_info output file> -o ./
+
+import csv
+import sys
+import os.path
+
+
+def import_file(filename):
+    for line in csv.reader(open(filename)):
+        if line:
+            yield line
+
+
+clusters_input_file = sys.argv[sys.argv.index('-c')+1]
+annot_input_file = sys.argv[sys.argv.index('-a')+1]
+output_file = sys.argv[sys.argv.index('-o')+1]
+
+
+inputlist = []
+outlist = ["Sample" + '\t' + "ORF" + '\t' + "Taxon" + '\t' + "Counts"]
+intlist = []
+
+for line in import_file(clusters_input_file):
+	for il in line:
+		inputlist.append(il)
+
+tmp = ''.join(inputlist)
+tmp2 = tmp.split('>Cluster')
+
+for i in tmp2:
+	currRow = i.split('\t')
+	counter = len(currRow) - 1
+	if len(currRow) < 2:
+		pass
+	else:
+		extractContig = currRow[1]
+		currContig = extractContig[extractContig.find('>'):extractContig.find('.')]
+		intlist.append(currContig + '\t' + str(counter))
+
+
+for line in import_file(annot_input_file):
+	for y in line:
+		splity = y.split('\t')
+		for i in intlist:
+			spliti = i.split('\t')
+			if spliti[0] == str('>' + splity[1]):
+				outlist.append(splity[0] + '\t' + splity[1] + '\t' + splity[2] + '\t' + str(spliti[1]))
+
+    
+output = open(os.path.join(output_file, "Cluster_adj_" + str(annot_input_file) + ".txt"), "w")	
+for x in outlist:
+	output.write(x + '\n')
+	
+	
+
+	
